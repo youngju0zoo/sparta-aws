@@ -3,3 +3,8 @@ spring:
     name: sparta-aws
   profiles:
     active: local
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
