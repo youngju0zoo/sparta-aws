@@ -125,3 +125,71 @@ http://3.27.110.106:8080/actuator/health
 - 응답 결과: `status: UP`
 
 ![EC2 Health Check](images/aws-ec2-health-check.png)
+
+
+## Lv.2 RDS 및 Parameter Store 연동
+
+### 1. RDS MySQL 생성 및 연결
+
+- 리전: ap-southeast-2 (시드니)
+- DB 인스턴스: sparta-aws-rds
+- DB 엔진: MySQL 8.4
+- 데이터베이스: memberdb
+- EC2에서 RDS MySQL 접속 성공
+- Spring Boot `prod` 프로필에서 RDS 연결 확인
+
+### 2. RDS 보안 그룹 설정
+
+RDS 인바운드 규칙에서 EC2 보안 그룹만 접근하도록 설정했습니다.
+
+| 항목 | 설정 |
+|---|---|
+| 보안 그룹 | sparta-aws-rds-sg |
+| 유형 | MySQL/Aurora |
+| 프로토콜 | TCP |
+| 포트 | 3306 |
+| 소스 | EC2 보안 그룹 (`sg-081090aa49926d600`) |
+
+![RDS 보안 그룹 인바운드 규칙](images/aws-rds-security-group.png)
+
+### 3. AWS Systems Manager Parameter Store 연동
+
+DB 접속 정보와 팀 이름을 Parameter Store에 저장하고, Spring Boot 실행 시 조회하도록 구현했습니다.
+
+| 파라미터 이름 | 유형 |
+|---|---|
+| `/sparta-aws/db/url` | String |
+| `/sparta-aws/db/username` | String |
+| `/sparta-aws/db/password` | SecureString |
+| `/sparta-aws/db/team-name` | String |
+
+- EC2 IAM 역할에 Parameter Store 조회 권한 설정
+- AWS SDK 및 `EnvironmentPostProcessor`를 이용한 설정값 조회
+- `prod` 프로필에서 RDS MySQL 연결
+
+### 4. EC2 배포 및 Actuator Info 확인
+
+Gradle로 JAR 파일을 빌드하고 SCP로 EC2에 전송한 뒤 `prod` 프로필로 실행했습니다.
+
+**실행 명령어**
+
+```bash
+java -jar sparta-aws-0.0.1-SNAPSHOT.jar --spring.profiles.active=prod
+```
+
+**Actuator Info URL**
+
+http://16.179.179.23:8080/actuator/info
+
+**응답 결과**
+
+```json
+{
+  "team-name": "solo-project"
+}
+```
+
+- Parameter Store에서 팀 이름 조회 성공
+- 외부 브라우저에서 `/actuator/info` 정상 응답 확인
+- Postman에서 팀원 등록(POST) 및 조회(GET) 성공
+- SSH 터널을 이용한 로컬 PC → RDS MySQL 연결 테스트 성공
