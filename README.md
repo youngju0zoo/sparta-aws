@@ -193,3 +193,61 @@ http://16.179.179.23:8080/actuator/info
 - 외부 브라우저에서 `/actuator/info` 정상 응답 확인
 - Postman에서 팀원 등록(POST) 및 조회(GET) 성공
 - SSH 터널을 이용한 로컬 PC → RDS MySQL 연결 테스트 성공
+
+
+## Lv.3 S3 프로필 이미지 업로드 및 조회
+
+### 1. S3 버킷 생성 및 IAM Role 설정
+
+- 리전: ap-southeast-2 (시드니)
+- S3 버킷: `sparta-aws-profile-0zoo`
+- EC2 IAM Role: `sparta-aws-ec2-role`
+- IAM Role에 `s3:PutObject`, `s3:GetObject` 권한 설정
+- AWS SDK for Java v2를 이용한 S3 연동
+
+### 2. 프로필 이미지 업로드 및 조회 API 구현
+
+회원 프로필 이미지를 S3에 업로드하고, 이미지 URL을 RDS에 저장하도록 구현했습니다.
+
+| HTTP Method | Endpoint | 기능 |
+|---|---|---|
+| POST | `/api/members/{id}/profile-image` | 프로필 이미지 업로드 |
+| GET | `/api/members/{id}/profile-image` | Presigned URL 조회 |
+
+- `MultipartFile`을 이용한 이미지 업로드
+- UUID를 이용한 S3 객체 키 생성
+- 업로드한 이미지의 S3 URL을 회원 엔티티에 저장
+- JPA 변경 감지를 이용한 RDS 데이터 반영
+- Postman에서 이미지 업로드 및 조회 API 정상 동작 확인
+
+### 3. Presigned URL 생성
+
+비공개 S3 이미지에 일정 시간 동안 접근할 수 있도록 Presigned URL을 생성했습니다.
+
+- `S3Presigner`를 이용한 Presigned URL 생성
+- 유효기간 설정: **7일 (`Duration.ofDays(7)`)**
+- GET API 호출 시 Presigned URL 반환
+- 브라우저에서 Presigned URL을 통한 이미지 접근 성공
+- IAM Role의 임시 자격 증명이 먼저 만료되면 실제 접근 가능 기간이 7일보다 짧을 수 있음
+
+### 4. EC2 배포 및 동작 확인
+
+Gradle로 JAR 파일을 빌드하고 SCP로 EC2에 전송한 뒤 `prod` 프로필로 실행했습니다.
+
+**실행 명령어**
+
+```bash
+java -jar sparta-aws-0.0.1-SNAPSHOT.jar --spring.profiles.active=prod
+```
+
+- EC2에서 Spring Boot 애플리케이션 실행 성공
+- Postman에서 프로필 이미지 업로드 성공
+- AWS S3 콘솔에서 이미지 파일 저장 확인
+- IntelliJ Database에서 RDS 이미지 URL 저장 확인
+- Presigned URL을 이용한 브라우저 이미지 접근 성공
+
+### 5. Presigned URL 접근 성공 스크린샷
+
+EC2 IAM Role을 사용했으므로 과제 안내에 따라 Presigned URL 대신 접근 성공 스크린샷을 첨부했습니다.
+
+![S3 Presigned URL 접근 성공](images/aws-s3-presigned-url-success.png)
