@@ -18,10 +18,14 @@ public class Member {
     private String memberName;
     private int memberAge;
     private String memberMbti;
+    private String profileImageUrl;
 
     public Member(String memberName, int memberAge, String memberMbti) {
         this.memberName = memberName;
         this.memberAge = memberAge;
         this.memberMbti = memberMbti;
+    }
+    public void updateProfileImage(String profileImageUrl) {
+        this.profileImageUrl = profileImageUrl;
     }
 }
